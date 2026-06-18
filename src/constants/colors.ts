@@ -1,0 +1,41 @@
+/** Design tokens from Figma Style Guide — medium sea green brand */
+export const colors = {
+  primary: '#47B275',
+  primaryDark: '#3A9260',
+  primaryLight: '#73CD9A',
+  secondary: '#EBFFF3',
+  accent: '#FFC043',
+  /** Figma home promo — orange discount highlight */
+  promoGold: '#F9A825',
+  promoPanel: '#000000',
+  promoPanelAlt: '#0D4F8B',
+  promoBlueText: '#7EC8FF',
+  promoBlueCta: '#5EB3FF',
+  coral: '#FF7D49',
+  success: '#3A9260',
+  warning: '#FFC453',
+  error: '#F23838',
+  critical: '#D82C0D',
+  info: '#0066FF',
+  neutral: {
+    900: '#000000',
+    800: '#222222',
+    700: '#444444',
+    600: '#666666',
+    500: '#888888',
+    400: '#999999',
+    300: '#BBBBBB',
+    200: '#DDDDDD',
+    150: '#CCCCCC',
+    100: '#F7F7F7',
+    50: '#F7F7F7',
+  },
+  placeholder: '#777777',
+  border: '#CCCCCC',
+  borderOpaque: '#E2E2E2',
+  facebook: '#3C599A',
+  google: '#4285F4',
+  white: '#FFFFFF',
+} as const;
+
+export type ColorToken = typeof colors;

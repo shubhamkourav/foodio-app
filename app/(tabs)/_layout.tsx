@@ -1,68 +1,76 @@
-import { SymbolView } from 'expo-symbols';
-import { Link, Tabs } from 'expo-router';
-import { Platform, Pressable } from 'react-native';
+import { Tabs } from 'expo-router';
+import { Bell, Home, Search, ShoppingBag, UserCircle } from 'lucide-react-native';
+import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+import { colors } from '@/constants/colors';
+import { layout } from '@/constants/layout';
+import { shadows } from '@/constants/shadows';
+import { typography } from '@/constants/typography';
+
+/** Bottom nav labels from Figma Nav component (Screen/ home/01) */
+const TAB_LABELS = {
+  home: 'Home',
+  search: 'Search',
+  orders: 'Order',
+  notifications: 'Notification',
+  profile: 'Account',
+} as const;
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const insets = useSafeAreaInsets();
+  const bottomInset = Platform.OS === 'web' ? 0 : insets.bottom;
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.neutral[500],
+        headerShown: false,
+        tabBarLabelStyle: typography.tabLabel,
+        tabBarIconStyle: { marginBottom: 4 },
+        tabBarStyle: {
+          backgroundColor: colors.white,
+          borderTopWidth: 0,
+          height: layout.tabBarHeight + bottomInset,
+          paddingTop: 8,
+          paddingBottom: bottomInset,
+          ...shadows.tabBar,
+        },
       }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable style={{ marginRight: 15 }}>
-                {({ pressed }) => (
-                  <SymbolView
-                    name={{ ios: 'info.circle', android: 'info', web: 'info' }}
-                    size={25}
-                    tintColor={Colors[colorScheme].text}
-                    style={{ opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
-          ),
+          title: TAB_LABELS.home,
+          tabBarIcon: ({ color }) => <Home color={color} size={layout.tabIconSize} />,
         }}
       />
       <Tabs.Screen
-        name="two"
+        name="search"
         options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
+          title: TAB_LABELS.search,
+          tabBarIcon: ({ color }) => <Search color={color} size={layout.tabIconSize} />,
+        }}
+      />
+      <Tabs.Screen
+        name="orders"
+        options={{
+          title: TAB_LABELS.orders,
+          tabBarIcon: ({ color }) => <ShoppingBag color={color} size={layout.tabIconSize} />,
+        }}
+      />
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          title: TAB_LABELS.notifications,
+          tabBarIcon: ({ color }) => <Bell color={color} size={layout.tabIconSize} />,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: TAB_LABELS.profile,
+          tabBarIcon: ({ color }) => <UserCircle color={color} size={layout.tabIconSize} />,
         }}
       />
     </Tabs>
