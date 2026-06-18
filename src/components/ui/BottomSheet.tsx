@@ -3,6 +3,7 @@ import { Modal, Pressable, StyleSheet, Text, View, type ModalProps } from 'react
 import Animated, { SlideInDown, SlideOutDown } from 'react-native-reanimated';
 
 import { colors } from '@/constants/colors';
+import { layout } from '@/constants/layout';
 import { spacing } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
 
@@ -10,9 +11,17 @@ export interface BottomSheetProps extends Omit<ModalProps, 'children'> {
   title?: string;
   children: ReactNode;
   onClose: () => void;
+  showHandle?: boolean;
 }
 
-export function BottomSheet({ title, children, onClose, visible, ...props }: BottomSheetProps) {
+export function BottomSheet({
+  title,
+  children,
+  onClose,
+  visible,
+  showHandle = true,
+  ...props
+}: BottomSheetProps) {
   return (
     <Modal transparent animationType="fade" visible={visible} onRequestClose={onClose} {...props}>
       <View style={styles.overlay}>
@@ -22,7 +31,7 @@ export function BottomSheet({ title, children, onClose, visible, ...props }: Bot
           onPress={onClose}
         />
         <Animated.View entering={SlideInDown} exiting={SlideOutDown} style={styles.sheet}>
-          <View style={styles.handle} />
+          {showHandle ? <View style={styles.handle} /> : null}
           {title ? <Text style={styles.title}>{title}</Text> : null}
           {children}
         </Animated.View>
@@ -35,18 +44,18 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
   },
   sheet: {
     backgroundColor: colors.white,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: spacing.lg,
+    borderTopLeftRadius: layout.accountSignOutSheetRadius,
+    borderTopRightRadius: layout.accountSignOutSheetRadius,
+    paddingHorizontal: layout.screenPadding,
     paddingBottom: spacing.xl,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.lg,
     maxHeight: '90%',
   },
   handle: {

@@ -1,5 +1,4 @@
 import type { LucideIcon } from 'lucide-react-native';
-import { ChevronRight } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '@/constants/colors';
@@ -12,20 +11,25 @@ export interface AccountMenuItemProps {
   onPress?: () => void;
 }
 
+/** Figma Account menu — thin icon + bold label */
 export function AccountMenuItem({ label, icon: Icon, onPress }: AccountMenuItemProps) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      onPress={onPress}
-      disabled={!onPress}
-      style={({ pressed }) => [styles.row, pressed && onPress && styles.pressed]}>
-      <View style={styles.iconWrap}>
-        <Icon size={20} color={colors.neutral[900]} />
-      </View>
-      <Text style={styles.label}>{label}</Text>
-      <ChevronRight size={20} color={colors.neutral[400]} />
-      <View style={styles.divider} />
+      onPress={onPress}>
+      {({ pressed }) => (
+        <View style={[styles.row, pressed && styles.pressed]}>
+          <View style={styles.iconWrap}>
+            <Icon
+              size={layout.accountMenuIconSize}
+              color={colors.neutral[900]}
+              strokeWidth={1.5}
+            />
+          </View>
+          <Text style={styles.label}>{label}</Text>
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -34,23 +38,19 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 52,
-    paddingRight: layout.screenPadding,
+    height: layout.accountMenuRowHeight,
+    paddingHorizontal: layout.screenPadding,
   },
   pressed: { backgroundColor: colors.neutral[100] },
-  iconWrap: { padding: 14, marginLeft: 2 },
+  iconWrap: {
+    width: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
   label: {
     ...typography.fieldLabel,
     color: colors.neutral[900],
     flex: 1,
-    marginLeft: 8,
-  },
-  divider: {
-    position: 'absolute',
-    bottom: 0,
-    left: layout.screenPadding,
-    right: 0,
-    height: 1,
-    backgroundColor: colors.neutral[200],
   },
 });

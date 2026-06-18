@@ -54,6 +54,14 @@ export const layout = {
   restaurantMenuItemHeight: 106,
   /** Orders list row */
   orderRowHeight: 108,
+  /** Account & Settings — Figma Screen/ Account */
+  accountHeaderBackSize: 34,
+  accountMenuRowHeight: 52,
+  accountMenuIconSize: 22,
+  accountDetailRowMinHeight: 80,
+  accountAvatarSize: 88,
+  accountVerifiedBadgeSize: 22,
+  accountSignOutSheetRadius: 16,
 } as const;
 
 export type LayoutToken = typeof layout;

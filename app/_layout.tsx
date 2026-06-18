@@ -132,6 +132,7 @@ function RootLayoutNav() {
         <Stack.Screen name="address" options={{ title: 'Delivery address' }} />
         <Stack.Screen name="location-map" options={{ headerShown: false }} />
         <Stack.Screen name="add-address" options={{ title: 'Enter Address' }} />
+        <Stack.Screen name="my-account" options={{ headerShown: false }} />
       </Stack>
     </ThemeProvider>
   );
