@@ -47,6 +47,8 @@ export const layout = {
   searchHeaderCompactHeight: 64,
   searchListItemHeight: 48,
   searchResultItemHeight: 64,
+  searchSuggestionThumbSize: 48,
+  searchSuggestionThumbRadius: 4,
   searchSectionGap: 32,
   searchTitleListGap: 24,
   /** Restaurant page — Screen/ Recipe/ Restaurant page/ 01 */

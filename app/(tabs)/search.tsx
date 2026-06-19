@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
-import { ArrowRight, Search, UtensilsCrossed } from 'lucide-react-native';
+import { Search, UtensilsCrossed } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -13,161 +13,229 @@ import {
 } from '@/components';
 import { SearchHeader } from '@/components/search/SearchHeader';
 import { SearchListItem } from '@/components/search/SearchListItem';
-import { SearchResultItem } from '@/components/search/SearchResultItem';
+import { SearchRestaurantSuggestion } from '@/components/search/SearchRestaurantSuggestion';
+import { SearchShowAllRow } from '@/components/search/SearchShowAllRow';
 import { colors } from '@/constants/colors';
 import { layout } from '@/constants/layout';
 import { typography } from '@/constants/typography';
+import { useCuisines } from '@/hooks/useCuisines';
 import { useLocation } from '@/hooks/useLocation';
 import { useRestaurants } from '@/hooks/useRestaurants';
+import { useSearch } from '@/hooks/useSearch';
+import type { SearchResult } from '@/types/search';
+import { matchesFoodCategory } from '@/utils/categoryFilter';
 import { getErrorMessage } from '@/utils/getErrorMessage';
 
-const TOP_SEARCH = ['Indian', 'Biriyani', 'Burger', 'Kacchi', 'Kabab'];
-const PEOPLE_ALSO_SEARCHED = ['Pizza', 'Chinese', 'Thai', 'Sushi', 'Dessert'];
+const DEFAULT_LAT = 19.076;
+const DEFAULT_LNG = 72.8777;
+const SEARCH_RADIUS = 12000;
+
+const PEOPLE_ALSO_SEARCHED = ['Pizza', 'Chaat', 'Dosa', 'Thali', 'Lassi'] as const;
 
 export default function SearchScreen() {
   const [query, setQuery] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
   const [showAllResults, setShowAllResults] = useState(false);
   const { coordinates } = useLocation();
+  const { data: cuisines = [] } = useCuisines();
 
-  const { data, isLoading, isError, error, refetch } = useRestaurants({
-    lat: coordinates?.lat ?? 37.7749,
-    lng: coordinates?.lng ?? -122.4194,
+  const lat = coordinates?.lat ?? DEFAULT_LAT;
+  const lng = coordinates?.lng ?? DEFAULT_LNG;
+
+  const topSearchTerms = useMemo(
+    () => cuisines.slice(0, 5).map((cuisine) => cuisine.name),
+    [cuisines],
+  );
+
+  const categoryTerms = useMemo(
+    () => cuisines.slice(0, 5).map((cuisine) => cuisine.name),
+    [cuisines],
+  );
+
+  const isTyping = query.trim().length > 0;
+  const compactHeader = isFocused || isTyping;
+  const showSuggestionList = isTyping && !showAllResults;
+  const showResultsList = isTyping && showAllResults;
+
+  const {
+    data: searchData,
+    isLoading: isSearching,
+    isError: isSearchError,
+    error: searchError,
+    refetch: refetchSearch,
+  } = useSearch(query, { lat, lng }, { enabled: isTyping });
+
+  const { data: nearbyRestaurantData } = useRestaurants({
+    lat,
+    lng,
+    radius: SEARCH_RADIUS,
     limit: 50,
   });
 
-  const allRestaurants = data?.data ?? [];
+  const { data: allRestaurantData } = useRestaurants({ limit: 50 });
 
-  const restaurants = useMemo(() => {
-    if (!query.trim()) return allRestaurants;
-    const q = query.toLowerCase();
-    return allRestaurants.filter(
-      (r) =>
-        r.name.toLowerCase().includes(q) ||
-        r.cuisine.some((c) => c.toLowerCase().includes(q)),
+  const restaurantPool = useMemo(() => {
+    const nearby = nearbyRestaurantData?.data ?? [];
+    if (nearby.length > 0) return nearby;
+    return allRestaurantData?.data ?? [];
+  }, [allRestaurantData?.data, nearbyRestaurantData?.data]);
+
+  const localMatches = useMemo(() => {
+    if (!isTyping) return [];
+
+    const term = query.trim();
+    return restaurantPool.filter(
+      (restaurant) =>
+        restaurant.name.toLowerCase().includes(term.toLowerCase()) ||
+        matchesFoodCategory(restaurant, term, cuisines),
     );
-  }, [allRestaurants, query]);
+  }, [cuisines, isTyping, query, restaurantPool]);
 
-  const categories = useMemo(
-    () => [...new Set(allRestaurants.flatMap((r) => r.cuisine))],
-    [allRestaurants],
-  );
+  const searchResults = useMemo<SearchResult[]>(() => {
+    const apiResults = searchData?.data ?? [];
+    if (apiResults.length > 0) return apiResults;
+    if (!isTyping) return [];
 
-  const suggestions = useMemo(() => {
-    if (!query.trim()) return [];
-    const q = query.toLowerCase();
-    const names = allRestaurants
-      .filter((r) => r.name.toLowerCase().includes(q))
-      .map((r) => r.name);
-    const cuisines = categories.filter((c) => c.toLowerCase().includes(q));
-    return [...new Set([...names, ...cuisines])].slice(0, 5);
-  }, [allRestaurants, categories, query]);
-
-  const isTyping = query.trim().length > 0;
-  const showSuggestionList = isTyping && !showAllResults;
+    return localMatches.map((restaurant) => ({ ...restaurant, matchedDishes: [] }));
+  }, [isTyping, localMatches, searchData?.data]);
 
   const applySearch = (term: string) => {
     setQuery(term);
     setShowAllResults(false);
   };
 
-  const openAllResults = () => setShowAllResults(true);
+  const openRestaurant = (id: string) => router.push(`/restaurant/${id}`);
+
+  const renderInitialContent = () => (
+    <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <Text style={styles.sectionTitle}>Top search</Text>
+      {topSearchTerms.map((item) => (
+        <SearchListItem
+          key={item}
+          label={item}
+          icon={Search}
+          onPress={() => applySearch(item)}
+        />
+      ))}
+
+      <Text style={[styles.sectionTitle, styles.sectionGap]}>Search by Category</Text>
+      {categoryTerms.map((item) => (
+        <SearchListItem
+          key={item}
+          label={item}
+          icon={UtensilsCrossed}
+          onPress={() => applySearch(item)}
+        />
+      ))}
+    </ScrollView>
+  );
+
+  const renderSuggestionContent = () => {
+    if (isSearching) return <LoadingState />;
+
+    if (isSearchError && searchResults.length === 0) {
+      return (
+        <ErrorState
+          message={getErrorMessage(searchError, 'Search failed')}
+          onRetry={() => refetchSearch()}
+        />
+      );
+    }
+
+    return (
+      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        {searchResults.length === 0 ? (
+          <Text style={styles.emptyHint}>
+            No restaurants or dishes found for “{query.trim()}”
+          </Text>
+        ) : (
+          searchResults.slice(0, 5).map((restaurant) => (
+            <SearchRestaurantSuggestion
+              key={restaurant.id}
+              restaurant={restaurant}
+              onPress={openRestaurant}
+            />
+          ))
+        )}
+
+        {searchResults.length > 0 ? (
+          <SearchShowAllRow query={query} onPress={() => setShowAllResults(true)} />
+        ) : null}
+
+        <Text style={styles.sectionTitle}>People also searched for</Text>
+        {PEOPLE_ALSO_SEARCHED.filter((item) => item.toLowerCase() !== query.toLowerCase()).map(
+          (item) => (
+            <SearchListItem
+              key={item}
+              label={item}
+              icon={Search}
+              onPress={() => applySearch(item)}
+            />
+          ),
+        )}
+      </ScrollView>
+    );
+  };
+
+  const renderResultsContent = () => {
+    if (isSearching) return <LoadingState />;
+
+    if (isSearchError && searchResults.length === 0) {
+      return (
+        <ErrorState
+          message={getErrorMessage(searchError, 'Search failed')}
+          onRetry={() => refetchSearch()}
+        />
+      );
+    }
+
+    if (searchResults.length === 0) {
+      return <EmptyState message={`No results for “${query.trim()}”`} onRetry={() => refetchSearch()} />;
+    }
+
+    return (
+      <FlatList
+        data={searchResults}
+        keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={
+          <Text style={styles.resultsHeading}>
+            {searchResults.length} results for “{query.trim()}”
+          </Text>
+        }
+        contentContainerStyle={styles.list}
+        renderItem={({ item }) => (
+          <RestaurantCard restaurant={item} onPress={openRestaurant} />
+        )}
+      />
+    );
+  };
 
   return (
     <ErrorBoundary>
       <SafeAreaView style={styles.container} edges={['top']}>
         <SearchHeader
           value={query}
+          compact={compactHeader}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          onSubmit={() => {
+            if (isTyping) setShowAllResults(true);
+          }}
           onChangeText={(text) => {
             setQuery(text);
             setShowAllResults(false);
           }}
-          compact={isTyping}
         />
 
-        {showSuggestionList ? (
-          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            {suggestions.map((item) => (
-              <SearchResultItem
-                key={item}
-                label={item}
-                icon={Search}
-                onPress={() => applySearch(item)}
-              />
-            ))}
-
-            {suggestions.length > 0 ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Show all results for ${query}`}
-                onPress={openAllResults}
-                style={({ pressed }) => [styles.showAllRow, pressed && styles.pressed]}>
-                <Search size={24} color={colors.neutral[900]} />
-                <Text style={styles.showAllText}>Show all result for “{query.trim()}”</Text>
-                <ArrowRight size={20} color={colors.neutral[400]} />
-                <View style={styles.divider} />
-              </Pressable>
-            ) : null}
-
-            <Text style={styles.sectionTitle}>People also searched for</Text>
-            {PEOPLE_ALSO_SEARCHED.filter((item) => item.toLowerCase() !== query.toLowerCase()).map(
-              (item) => (
-                <SearchListItem
-                  key={item}
-                  label={item}
-                  icon={UtensilsCrossed}
-                  onPress={() => applySearch(item)}
-                />
-              ),
-            )}
-          </ScrollView>
-        ) : isTyping ? (
-          isLoading ? (
-            <LoadingState />
-          ) : isError ? (
-            <ErrorState message={getErrorMessage(error, 'Search failed')} onRetry={() => refetch()} />
-          ) : restaurants.length === 0 ? (
-            <EmptyState message="No restaurants match your search" onRetry={() => refetch()} />
-          ) : (
-            <FlatList
-              data={restaurants}
-              keyExtractor={(item) => item.id}
-              ListHeaderComponent={
-                <Text style={styles.resultsHeading}>
-                  {restaurants.length} results for “{query.trim()}”
-                </Text>
-              }
-              contentContainerStyle={styles.list}
-              renderItem={({ item }) => (
-                <RestaurantCard
-                  restaurant={item}
-                  onPress={(id) => router.push(`/restaurant/${id}`)}
-                />
-              )}
-            />
-          )
-        ) : (
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <Text style={styles.sectionTitle}>Top search</Text>
-            {TOP_SEARCH.map((item) => (
-              <SearchListItem
-                key={item}
-                label={item}
-                icon={Search}
-                onPress={() => applySearch(item)}
-              />
-            ))}
-
-            <Text style={[styles.sectionTitle, styles.sectionGap]}>Search by Category</Text>
-            {categories.map((item) => (
-              <SearchListItem
-                key={item}
-                label={item}
-                icon={UtensilsCrossed}
-                onPress={() => applySearch(item)}
-              />
-            ))}
-          </ScrollView>
-        )}
+        <View style={styles.body}>
+          {showResultsList
+            ? renderResultsContent()
+            : showSuggestionList
+              ? renderSuggestionContent()
+              : renderInitialContent()}
+        </View>
       </SafeAreaView>
     </ErrorBoundary>
   );
@@ -175,6 +243,7 @@ export default function SearchScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.white },
+  body: { flex: 1 },
   sectionTitle: {
     ...typography.h3,
     color: colors.neutral[900],
@@ -188,26 +257,11 @@ const styles = StyleSheet.create({
     color: colors.neutral[900],
     marginBottom: layout.searchTitleListGap,
   },
-  list: { paddingHorizontal: layout.screenPadding, paddingBottom: 32 },
-  showAllRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: layout.searchListItemHeight,
+  emptyHint: {
+    ...typography.body16,
+    color: colors.placeholder,
     paddingHorizontal: layout.screenPadding,
-    gap: 16,
+    paddingTop: layout.searchSectionGap,
   },
-  showAllText: {
-    ...typography.body,
-    color: colors.neutral[900],
-    flex: 1,
-  },
-  pressed: { backgroundColor: colors.neutral[100] },
-  divider: {
-    position: 'absolute',
-    bottom: 0,
-    left: layout.screenPadding,
-    right: 0,
-    height: 1,
-    backgroundColor: colors.neutral[200],
-  },
+  list: { paddingHorizontal: layout.screenPadding, paddingBottom: 24 },
 });
